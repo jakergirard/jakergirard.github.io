@@ -179,41 +179,54 @@
                 return;
             }
 
-            const workflow_url = 'https://api.github.com/repos/jakergirard/jakergirard.github.io/actions/workflows/color-correction.yml/dispatches';
-            
+            const processedContainer = document.createElement('div');
+            processedContainer.className = 'image-container';
+            processedContainer.innerHTML = `
+                <h3>Processing</h3>
+                <p>Your images are being processed...</p>
+            `;
+            resultsDiv.appendChild(processedContainer);
+
             try {
-                const response = await fetch(workflow_url, {
-                    method: 'POST',
-                    headers: {
-                        'Accept': 'application/vnd.github.v3+json',
-                        'Authorization': 'Bearer YOUR_GITHUB_TOKEN' // You'll need to replace this with a GitHub token
-                    },
-                    body: JSON.stringify({
-                        ref: 'main',
-                        inputs: {
-                            image_data: targetImage,
-                            reference_data: referenceImage
-                        }
-                    })
-                });
+                // Create a form submission
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = 'https://github.com/jakergirard/jakergirard.github.io/actions/workflows/color-correction.yml/dispatches';
+                form.target = '_blank';
 
-                if (!response.ok) {
-                    throw new Error('Failed to process image');
-                }
+                // Add the input fields
+                const refInput = document.createElement('input');
+                refInput.type = 'hidden';
+                refInput.name = 'reference_data';
+                refInput.value = referenceImage;
+                form.appendChild(refInput);
 
-                // Note: In a real implementation, you'd need to poll the workflow status
-                // and retrieve the results. For now, we'll just show a message.
-                const processedContainer = document.createElement('div');
-                processedContainer.className = 'image-container';
+                const targetInput = document.createElement('input');
+                targetInput.type = 'hidden';
+                targetInput.name = 'image_data';
+                targetInput.value = targetImage;
+                form.appendChild(targetInput);
+
+                // Add to document, submit, and remove
+                document.body.appendChild(form);
+                form.submit();
+                document.body.removeChild(form);
+
                 processedContainer.innerHTML = `
-                    <h3>Processing</h3>
-                    <p>Your image is being processed. Check the GitHub Actions tab for results.</p>
+                    <h3>Processing Started</h3>
+                    <p>Your images are being processed. A new tab has opened where you can view the progress.</p>
+                    <p>Once complete, the processed image will be available at:</p>
+                    <p><code>https://jakergirard.github.io/processed/[timestamp].jpg</code></p>
+                    <p>Please check the Actions tab in the new window for status and results.</p>
                 `;
-                resultsDiv.appendChild(processedContainer);
 
             } catch (error) {
                 console.error('Error:', error);
-                alert('Failed to process image. Please try again.');
+                processedContainer.innerHTML = `
+                    <h3>Error</h3>
+                    <p>Failed to process images. Please try again.</p>
+                    <p>Error details: ${error.message}</p>
+                `;
             }
         }
 

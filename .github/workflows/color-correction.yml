@@ -13,6 +13,9 @@ on:
 jobs:
   process-image:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
     
     steps:
     - uses: actions/checkout@v2
@@ -36,6 +39,7 @@ jobs:
         import sys
         import json
         import os
+        import time
 
         def decode_image(base64_string):
             img_data = base64.b64decode(base64_string)
@@ -73,10 +77,29 @@ jobs:
         ref_img = decode_image(ref_data)
         result = process_image(input_img, ref_img)
 
-        # Return result
-        output = {'processed_image': encode_image(result)}
+        # Save result to file
+        timestamp = int(time.time())
+        filename = f'processed_{timestamp}.jpg'
+        cv2.imwrite(filename, result)
+
+        # Create output with public URL
+        output = {
+            'filename': filename,
+            'url': f'https://jakergirard.github.io/processed/{filename}'
+        }
+        
+        # Create output directory
+        os.makedirs('processed', exist_ok=True)
+        cv2.imwrite(f'processed/{filename}', result)
+        
         print(f"::set-output name=result::{json.dumps(output)}")
       shell: python
       env:
         INPUT_IMAGE_DATA: ${{ github.event.inputs.image_data }}
-        INPUT_REFERENCE_DATA: ${{ github.event.inputs.reference_data }} 
+        INPUT_REFERENCE_DATA: ${{ github.event.inputs.reference_data }}
+
+    - name: Upload processed image
+      uses: actions/upload-artifact@v2
+      with:
+        name: processed-image
+        path: processed/ 
