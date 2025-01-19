@@ -1,21 +1,17 @@
 name: Color Correction API
 
 on:
-  workflow_dispatch:
-    inputs:
-      image_data:
-        description: 'Base64 encoded image data'
-        required: true
-      reference_data:
-        description: 'Base64 encoded reference image data'
-        required: true
+  issues:
+    types: [opened]
 
 jobs:
   process-image:
+    # Only run if the issue title starts with "Image Processing Request"
+    if: startsWith(github.event.issue.title, 'Image Processing Request')
     runs-on: ubuntu-latest
     permissions:
-      contents: read
-      pages: write
+      contents: write
+      issues: write
     
     steps:
     - uses: actions/checkout@v2
@@ -68,9 +64,10 @@ jobs:
             result = cv2.cvtColor(result.astype(np.uint8), cv2.COLOR_LAB2BGR)
             return result
 
-        # Get input data from environment
-        input_data = os.environ['INPUT_IMAGE_DATA']
-        ref_data = os.environ['INPUT_REFERENCE_DATA']
+        # Get input data from issue body
+        issue_data = json.loads(os.environ['ISSUE_BODY'])
+        input_data = issue_data['image_data']
+        ref_data = issue_data['reference_data']
 
         # Process images
         input_img = decode_image(input_data)
@@ -80,26 +77,40 @@ jobs:
         # Save result to file
         timestamp = int(time.time())
         filename = f'processed_{timestamp}.jpg'
-        cv2.imwrite(filename, result)
 
-        # Create output with public URL
-        output = {
-            'filename': filename,
-            'url': f'https://jakergirard.github.io/processed/{filename}'
-        }
-        
-        # Create output directory
+        # Create output directory if it doesn't exist
         os.makedirs('processed', exist_ok=True)
         cv2.imwrite(f'processed/{filename}', result)
+
+        # Commit and push the processed image
+        os.system('git config --global user.email "actions@github.com"')
+        os.system('git config --global user.name "GitHub Actions"')
+        os.system('git add processed/*')
+        os.system(f'git commit -m "Add processed image {filename}"')
+        os.system('git push')
+
+        # Create the result URL
+        result_url = f'https://jakergirard.github.io/processed/{filename}'
         
-        print(f"::set-output name=result::{json.dumps(output)}")
+        # Save the URL for the next step
+        with open('result_url.txt', 'w') as f:
+            f.write(result_url)
       shell: python
       env:
-        INPUT_IMAGE_DATA: ${{ github.event.inputs.image_data }}
-        INPUT_REFERENCE_DATA: ${{ github.event.inputs.reference_data }}
+        ISSUE_BODY: ${{ github.event.issue.body }}
 
-    - name: Upload processed image
-      uses: actions/upload-artifact@v2
+    - name: Comment on Issue
+      uses: actions/github-script@v6
       with:
-        name: processed-image
-        path: processed/ 
+        script: |
+          const fs = require('fs');
+          const resultUrl = fs.readFileSync('result_url.txt', 'utf8').trim();
+          const result = {
+            processed_image_url: resultUrl
+          };
+          await github.rest.issues.createComment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+            body: JSON.stringify(result)
+          }); 

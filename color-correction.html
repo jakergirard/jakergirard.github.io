@@ -56,6 +56,10 @@
     </style>
 </head>
 <body class="is-preload">
+    <script>
+        // GitHub token for API access
+        const COLOR_CORRECTION_TOKEN = 'YOUR_TOKEN_HERE'; // Replace this with your GitHub token
+    </script>
     <div id="wrapper">
         <section id="main">
             <header>
@@ -188,37 +192,61 @@
             resultsDiv.appendChild(processedContainer);
 
             try {
-                // Create a form submission
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = 'https://github.com/jakergirard/jakergirard.github.io/actions/workflows/color-correction.yml/dispatches';
-                form.target = '_blank';
+                // First, create a new issue with the image data
+                const issueResponse = await fetch('https://api.github.com/repos/jakergirard/jakergirard.github.io/issues', {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Authorization': `Bearer ${COLOR_CORRECTION_TOKEN}`
+                    },
+                    body: JSON.stringify({
+                        title: `Image Processing Request ${Date.now()}`,
+                        body: JSON.stringify({
+                            image_data: targetImage,
+                            reference_data: referenceImage
+                        })
+                    })
+                });
 
-                // Add the input fields
-                const refInput = document.createElement('input');
-                refInput.type = 'hidden';
-                refInput.name = 'reference_data';
-                refInput.value = referenceImage;
-                form.appendChild(refInput);
+                if (!issueResponse.ok) {
+                    throw new Error(`Failed to submit processing request: ${issueResponse.status}`);
+                }
 
-                const targetInput = document.createElement('input');
-                targetInput.type = 'hidden';
-                targetInput.name = 'image_data';
-                targetInput.value = targetImage;
-                form.appendChild(targetInput);
-
-                // Add to document, submit, and remove
-                document.body.appendChild(form);
-                form.submit();
-                document.body.removeChild(form);
+                const issue = await issueResponse.json();
+                const issueNumber = issue.number;
 
                 processedContainer.innerHTML = `
                     <h3>Processing Started</h3>
-                    <p>Your images are being processed. A new tab has opened where you can view the progress.</p>
-                    <p>Once complete, the processed image will be available at:</p>
-                    <p><code>https://jakergirard.github.io/processed/[timestamp].jpg</code></p>
-                    <p>Please check the Actions tab in the new window for status and results.</p>
+                    <p>Your images are being processed. Please wait a moment...</p>
+                    <p>You can track the progress at: <a href="${issue.html_url}" target="_blank">Issue #${issueNumber}</a></p>
+                    <p>The processed image will appear here automatically when ready.</p>
                 `;
+
+                // Poll for comments on the issue to get the result
+                const checkResult = async () => {
+                    const commentsResponse = await fetch(`https://api.github.com/repos/jakergirard/jakergirard.github.io/issues/${issueNumber}/comments`);
+                    const comments = await commentsResponse.json();
+                    
+                    for (const comment of comments) {
+                        try {
+                            const data = JSON.parse(comment.body);
+                            if (data.processed_image_url) {
+                                processedContainer.innerHTML = `
+                                    <h3>Processing Complete</h3>
+                                    <img src="${data.processed_image_url}" alt="Processed Image">
+                                    <p><a href="${data.processed_image_url}" download>Download Processed Image</a></p>
+                                `;
+                                return;
+                            }
+                        } catch (e) {
+                            // Not a result comment, continue
+                        }
+                    }
+                    
+                    setTimeout(checkResult, 5000);
+                };
+
+                setTimeout(checkResult, 5000);
 
             } catch (error) {
                 console.error('Error:', error);
