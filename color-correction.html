@@ -205,8 +205,11 @@
                     method: 'POST',
                     headers: {
                         'Accept': 'application/vnd.github.v3+json',
-                        'Authorization': `Bearer ${COLOR_CORRECTION_TOKEN}`
+                        'Authorization': `Bearer ${COLOR_CORRECTION_TOKEN}`,
+                        'Content-Type': 'application/json',
+                        'Origin': window.location.origin
                     },
+                    mode: 'cors',
                     body: JSON.stringify({
                         title: `Image Processing Request ${Date.now()}`,
                         body: JSON.stringify({
@@ -217,7 +220,8 @@
                 });
 
                 if (!issueResponse.ok) {
-                    throw new Error(`Failed to submit processing request: ${issueResponse.status}`);
+                    const errorText = await issueResponse.text();
+                    throw new Error(`Failed to submit processing request: ${issueResponse.status} - ${errorText}`);
                 }
 
                 const issue = await issueResponse.json();
@@ -232,26 +236,48 @@
 
                 // Poll for comments on the issue to get the result
                 const checkResult = async () => {
-                    const commentsResponse = await fetch(`https://api.github.com/repos/jakergirard/jakergirard.github.io/issues/${issueNumber}/comments`);
-                    const comments = await commentsResponse.json();
-                    
-                    for (const comment of comments) {
-                        try {
-                            const data = JSON.parse(comment.body);
-                            if (data.processed_image_url) {
-                                processedContainer.innerHTML = `
-                                    <h3>Processing Complete</h3>
-                                    <img src="${data.processed_image_url}" alt="Processed Image">
-                                    <p><a href="${data.processed_image_url}" download>Download Processed Image</a></p>
-                                `;
-                                return;
-                            }
-                        } catch (e) {
-                            // Not a result comment, continue
+                    try {
+                        const commentsResponse = await fetch(`https://api.github.com/repos/jakergirard/jakergirard.github.io/issues/${issueNumber}/comments`, {
+                            headers: {
+                                'Accept': 'application/vnd.github.v3+json',
+                                'Authorization': `Bearer ${COLOR_CORRECTION_TOKEN}`,
+                                'Content-Type': 'application/json',
+                                'Origin': window.location.origin
+                            },
+                            mode: 'cors'
+                        });
+
+                        if (!commentsResponse.ok) {
+                            throw new Error(`Failed to fetch comments: ${commentsResponse.status}`);
                         }
+
+                        const comments = await commentsResponse.json();
+                        
+                        for (const comment of comments) {
+                            try {
+                                const data = JSON.parse(comment.body);
+                                if (data.processed_image_url) {
+                                    processedContainer.innerHTML = `
+                                        <h3>Processing Complete</h3>
+                                        <img src="${data.processed_image_url}" alt="Processed Image">
+                                        <p><a href="${data.processed_image_url}" download>Download Processed Image</a></p>
+                                    `;
+                                    return;
+                                }
+                            } catch (e) {
+                                console.log('Not a result comment, continuing...');
+                            }
+                        }
+                        
+                        setTimeout(checkResult, 5000);
+                    } catch (error) {
+                        console.error('Error checking results:', error);
+                        processedContainer.innerHTML = `
+                            <h3>Error Checking Results</h3>
+                            <p>Failed to check processing status. Please check the issue directly:</p>
+                            <p><a href="${issue.html_url}" target="_blank">Issue #${issueNumber}</a></p>
+                        `;
                     }
-                    
-                    setTimeout(checkResult, 5000);
                 };
 
                 setTimeout(checkResult, 5000);
@@ -262,6 +288,12 @@
                     <h3>Error</h3>
                     <p>Failed to process images. Please try again.</p>
                     <p>Error details: ${error.message}</p>
+                    <p>Make sure you have:</p>
+                    <ul>
+                        <li>Added a valid GitHub token in the URL (?token=YOUR_TOKEN)</li>
+                        <li>Given the token the necessary permissions (repo, issues, actions)</li>
+                        <li>Selected valid image files</li>
+                    </ul>
                 `;
             }
         }
