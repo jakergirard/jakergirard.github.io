@@ -1,0 +1,82 @@
+name: Color Correction API
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_data:
+        description: 'Base64 encoded image data'
+        required: true
+      reference_data:
+        description: 'Base64 encoded reference image data'
+        required: true
+
+jobs:
+  process-image:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install opencv-python-headless numpy
+    
+    - name: Process Image
+      id: process
+      run: |
+        import base64
+        import cv2
+        import numpy as np
+        import sys
+        import json
+        import os
+
+        def decode_image(base64_string):
+            img_data = base64.b64decode(base64_string)
+            nparr = np.frombuffer(img_data, np.uint8)
+            return cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+
+        def encode_image(image):
+            _, buffer = cv2.imencode('.jpg', image)
+            return base64.b64encode(buffer).decode('utf-8')
+
+        def process_image(input_img, ref_img):
+            # Convert to LAB color space
+            input_lab = cv2.cvtColor(input_img, cv2.COLOR_BGR2LAB)
+            ref_lab = cv2.cvtColor(ref_img, cv2.COLOR_BGR2LAB)
+            
+            # Calculate mean and std for both images
+            input_mean, input_std = cv2.meanStdDev(input_lab)
+            ref_mean, ref_std = cv2.meanStdDev(ref_lab)
+            
+            # Adjust the input image
+            result = np.copy(input_lab)
+            for i in range(3):
+                result[:,:,i] = ((result[:,:,i] - input_mean[i]) * (ref_std[i] / input_std[i])) + ref_mean[i]
+            
+            # Convert back to BGR
+            result = cv2.cvtColor(result.astype(np.uint8), cv2.COLOR_LAB2BGR)
+            return result
+
+        # Get input data from environment
+        input_data = os.environ['INPUT_IMAGE_DATA']
+        ref_data = os.environ['INPUT_REFERENCE_DATA']
+
+        # Process images
+        input_img = decode_image(input_data)
+        ref_img = decode_image(ref_data)
+        result = process_image(input_img, ref_img)
+
+        # Return result
+        output = {'processed_image': encode_image(result)}
+        print(f"::set-output name=result::{json.dumps(output)}")
+      shell: python
+      env:
+        INPUT_IMAGE_DATA: ${{ github.event.inputs.image_data }}
+        INPUT_REFERENCE_DATA: ${{ github.event.inputs.reference_data }} 

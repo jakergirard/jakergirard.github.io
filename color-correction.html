@@ -1,0 +1,253 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Image Color Correction - Jake R. Girard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <link href="assets/css/main.css" rel="stylesheet" />
+    <noscript><link rel="stylesheet" href="assets/css/noscript.css" /></noscript>
+    <style>
+        .upload-area {
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            margin: 20px 0;
+            cursor: pointer;
+        }
+        .upload-area:hover {
+            border-color: #888;
+        }
+        .image-preview {
+            max-width: 100%;
+            margin: 20px 0;
+        }
+        .button {
+            background-color: #49bf9d;
+            color: #fff;
+            border: 0;
+            border-radius: 4px;
+            padding: 12px 24px;
+            cursor: pointer;
+            margin: 10px;
+            font-family: "Source Sans Pro", Helvetica, sans-serif;
+        }
+        .button:hover {
+            background-color: #3aa183;
+        }
+        .button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        #results {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+        .image-container {
+            margin: 10px;
+            text-align: center;
+        }
+        .image-container img {
+            max-width: 400px;
+            max-height: 400px;
+        }
+    </style>
+</head>
+<body class="is-preload">
+    <div id="wrapper">
+        <section id="main">
+            <header>
+                <h1>Image Color Correction</h1>
+                <p>Upload an image to automatically correct its colors using AI</p>
+            </header>
+
+            <div class="upload-area" id="dropZone">
+                <p>Drop your reference image (with color card) here or click to upload</p>
+                <input type="file" id="fileInput" accept="image/*" style="display: none;">
+            </div>
+
+            <div class="upload-area" id="targetDropZone">
+                <p>Drop your target image (with color card) to correct here or click to upload</p>
+                <input type="file" id="targetFileInput" accept="image/*" style="display: none;">
+            </div>
+
+            <div id="results"></div>
+
+            <footer>
+                <ul class="icons">
+                    <li><a href="index.html" class="fa-home">Home</a></li>
+                    <li><a href="https://github.com/dazzafact/image_color_correction" class="fa-github" target="_blank">Source Code</a></li>
+                </ul>
+            </footer>
+        </section>
+
+        <footer id="footer">
+            <ul class="copyright">
+                <li>Based on <a href="https://github.com/dazzafact/image_color_correction" target="_blank">image_color_correction</a></li>
+            </ul>
+        </footer>
+    </div>
+
+    <script>
+        // Basic page load handler
+        if ('addEventListener' in window) {
+            window.addEventListener('load', function() {
+                document.body.className = document.body.className.replace(/\bis-preload\b/, '');
+            });
+            document.body.className += (navigator.userAgent.match(/(MSIE|rv:11\.0)/) ? ' is-ie' : '');
+        }
+
+        // File upload handling
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const targetDropZone = document.getElementById('targetDropZone');
+        const targetFileInput = document.getElementById('targetFileInput');
+        const resultsDiv = document.getElementById('results');
+
+        let referenceImage = null;
+        let targetImage = null;
+
+        // Reference image handling
+        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.style.borderColor = '#49bf9d';
+        });
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.style.borderColor = '#ccc';
+        });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.style.borderColor = '#ccc';
+            handleReferenceFile(e.dataTransfer.files[0]);
+        });
+        fileInput.addEventListener('change', (e) => {
+            handleReferenceFile(e.target.files[0]);
+        });
+
+        // Target image handling
+        targetDropZone.addEventListener('click', () => targetFileInput.click());
+        targetDropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            targetDropZone.style.borderColor = '#49bf9d';
+        });
+        targetDropZone.addEventListener('dragleave', () => {
+            targetDropZone.style.borderColor = '#ccc';
+        });
+        targetDropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            targetDropZone.style.borderColor = '#ccc';
+            handleTargetFile(e.dataTransfer.files[0]);
+        });
+        targetFileInput.addEventListener('change', (e) => {
+            handleTargetFile(e.target.files[0]);
+        });
+
+        function handleReferenceFile(file) {
+            if (!file || !file.type.startsWith('image/')) {
+                alert('Please upload an image file.');
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                referenceImage = e.target.result.split(',')[1]; // Get base64 data
+                updateDisplay();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function handleTargetFile(file) {
+            if (!file || !file.type.startsWith('image/')) {
+                alert('Please upload an image file.');
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                targetImage = e.target.result.split(',')[1]; // Get base64 data
+                updateDisplay();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        async function processImages() {
+            if (!referenceImage || !targetImage) {
+                alert('Please upload both reference and target images.');
+                return;
+            }
+
+            const workflow_url = 'https://api.github.com/repos/jakergirard/jakergirard.github.io/actions/workflows/color-correction.yml/dispatches';
+            
+            try {
+                const response = await fetch(workflow_url, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Authorization': 'Bearer YOUR_GITHUB_TOKEN' // You'll need to replace this with a GitHub token
+                    },
+                    body: JSON.stringify({
+                        ref: 'main',
+                        inputs: {
+                            image_data: targetImage,
+                            reference_data: referenceImage
+                        }
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to process image');
+                }
+
+                // Note: In a real implementation, you'd need to poll the workflow status
+                // and retrieve the results. For now, we'll just show a message.
+                const processedContainer = document.createElement('div');
+                processedContainer.className = 'image-container';
+                processedContainer.innerHTML = `
+                    <h3>Processing</h3>
+                    <p>Your image is being processed. Check the GitHub Actions tab for results.</p>
+                `;
+                resultsDiv.appendChild(processedContainer);
+
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Failed to process image. Please try again.');
+            }
+        }
+
+        function updateDisplay() {
+            resultsDiv.innerHTML = '';
+
+            if (referenceImage) {
+                const refContainer = document.createElement('div');
+                refContainer.className = 'image-container';
+                refContainer.innerHTML = `
+                    <h3>Reference Image</h3>
+                    <img src="data:image/jpeg;base64,${referenceImage}" alt="Reference">
+                `;
+                resultsDiv.appendChild(refContainer);
+            }
+
+            if (targetImage) {
+                const targetContainer = document.createElement('div');
+                targetContainer.className = 'image-container';
+                targetContainer.innerHTML = `
+                    <h3>Target Image</h3>
+                    <img src="data:image/jpeg;base64,${targetImage}" alt="Target">
+                `;
+                resultsDiv.appendChild(targetContainer);
+            }
+
+            if (referenceImage && targetImage) {
+                const processButton = document.createElement('button');
+                processButton.className = 'button';
+                processButton.textContent = 'Process Images';
+                processButton.onclick = processImages;
+                resultsDiv.appendChild(processButton);
+            }
+        }
+    </script>
+</body>
+</html> 
