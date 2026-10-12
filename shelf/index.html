@@ -1,0 +1,887 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shelf designer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --graphite:#24272b;
+  --graphite-2:#2e3237;
+  --graphite-3:#3a3f45;
+  --chalk:#ebe8e0;
+  --muted:#a3a8ad;
+  --chalkline:#5b9be8;
+  --pine:#e3c48f;
+  --pine-dark:#b8955a;
+  --ply:#dcc79a;
+  --concrete:#cfd1cc;
+  --paper:#f4f4f1;
+  --ink:#22252a;
+  --warn:#e8a33b;
+  --bad:#e0624f;
+  --sans:"Barlow",system-ui,sans-serif;
+  --cond:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{font-family:var(--sans);font-size:15px;line-height:1.45;color:var(--ink);background:var(--concrete)}
+.app{display:grid;grid-template-columns:340px 1fr;grid-template-rows:minmax(0,1fr);height:100vh}
+.rail{background:var(--graphite);color:var(--chalk);overflow-y:auto;min-height:0;display:flex;flex-direction:column}
+.brand{padding:18px 20px 14px;border-bottom:1px solid var(--graphite-3)}
+.brand h1{font-family:var(--cond);font-weight:700;font-size:30px;letter-spacing:.01em;margin:0;line-height:1}
+.brand p{margin:6px 0 0;color:var(--muted);font-size:13.5px}
+details.sec{border-bottom:1px solid var(--graphite-3)}
+details.sec>summary{cursor:pointer;list-style:none;padding:13px 20px;font-family:var(--cond);font-weight:600;font-size:19px;display:flex;justify-content:space-between;align-items:center}
+details.sec>summary::-webkit-details-marker{display:none}
+details.sec>summary::after{content:"+";color:var(--muted);font-size:20px}
+details.sec[open]>summary::after{content:"\2212"}
+.sec-body{padding:0 20px 16px;display:grid;gap:11px}
+.row{display:grid;grid-template-columns:1fr 128px;gap:10px;align-items:center}
+.row>label{font-size:14px;color:#d8d5cd}
+.hint{display:block;color:var(--muted);font-size:12px;line-height:1.3}
+input[type=text],select{width:100%;background:var(--graphite-2);color:var(--chalk);border:1px solid #4a5058;border-radius:4px;padding:6px 8px;font:inherit;font-size:14px}
+input[type=text]{font-family:var(--cond);font-size:17px;font-weight:500;text-align:right}
+input[type=text].bad{border-color:var(--bad)}
+input[type=range]{width:100%;accent-color:var(--chalkline)}
+input[type=checkbox]{accent-color:var(--chalkline);width:16px;height:16px;margin:0}
+:focus-visible{outline:2px solid var(--chalkline);outline-offset:2px}
+.rangeval{font-family:var(--cond);font-size:20px;font-weight:600;text-align:right}
+.rangewrap{display:grid;grid-template-columns:1fr 34px;gap:8px;align-items:center}
+.auto{display:grid;grid-template-columns:1fr;gap:6px}
+.auto .line{display:grid;grid-template-columns:1fr 128px;gap:10px;align-items:center}
+.auto .minmax{display:grid;grid-template-columns:auto 1fr auto 1fr;gap:6px;align-items:center;font-size:12.5px;color:var(--muted)}
+.chk{display:flex;gap:8px;align-items:center;font-size:13.5px;color:#d8d5cd;cursor:pointer}
+.autoval{font-family:var(--cond);color:var(--chalkline);font-size:16px;font-weight:600;text-align:right}
+table.stock{width:100%;border-collapse:collapse;font-size:13.5px}
+table.stock th{font-family:var(--cond);font-weight:600;font-size:16px;text-align:left;padding:4px 4px;color:var(--chalk)}
+table.stock td{padding:3px 4px}
+table.stock td.len{font-family:var(--cond);font-size:17px;width:44px}
+table.stock .cell{display:flex;gap:6px;align-items:center}
+table.stock input[type=text]{padding:3px 6px;font-size:15px;width:70px}
+.rail-foot{margin-top:auto;padding:16px 20px;display:grid;gap:8px;border-top:1px solid var(--graphite-3)}
+.btn{font:inherit;font-weight:500;font-size:14px;background:var(--graphite-2);color:var(--chalk);border:1px solid #4a5058;border-radius:4px;padding:8px 10px;cursor:pointer;text-align:left}
+.btn:hover{border-color:var(--chalkline)}
+.btn.primary{background:var(--chalkline);border-color:var(--chalkline);color:#0e1a2a;font-weight:600}
+.main{display:grid;grid-template-rows:minmax(0,1fr) minmax(0,44%);min-width:0;min-height:0}
+.view{position:relative;min-height:0;background:linear-gradient(#dfe0dc,#c9cbc6)}
+.view canvas{display:block}
+.overlay{position:absolute;inset:0;pointer-events:none}
+.hud{position:absolute;left:16px;top:14px;pointer-events:none}
+.hud .dims{font-family:var(--cond);font-weight:700;font-size:40px;line-height:1;color:var(--ink);letter-spacing:.005em}
+.hud .sub{font-size:14px;color:#4b5057;margin-top:4px}
+.viewbtns{position:absolute;right:14px;top:14px;display:flex;gap:6px}
+.viewbtns .btn{background:rgba(36,39,43,.86);font-size:13px;padding:6px 10px}
+.status{position:absolute;right:14px;bottom:12px;font-size:13px;color:#3b4046;background:rgba(244,244,241,.85);padding:4px 10px;border-radius:4px}
+.lbl{font-family:var(--cond);font-weight:600;font-size:15px;color:var(--ink);background:rgba(244,244,241,.88);padding:1px 6px;border-radius:3px;white-space:nowrap}
+.lbl.ceil{color:#a33a2a}
+.results{background:var(--paper);border-top:1px solid #b9bbb5;display:grid;grid-template-rows:auto minmax(0,1fr);min-height:0}
+.tabs{display:flex;gap:2px;padding:0 14px;border-bottom:1px solid #d9d9d3;background:#ecece8}
+.tab{font-family:var(--cond);font-weight:600;font-size:18px;padding:9px 14px 8px;background:none;border:none;border-bottom:3px solid transparent;cursor:pointer;color:#5a5f66}
+.tab[aria-selected=true]{color:var(--ink);border-bottom-color:var(--chalkline)}
+.panel{overflow:auto;padding:16px 20px 24px}
+.panel h3{font-family:var(--cond);font-weight:600;font-size:21px;margin:18px 0 8px}
+.panel h3:first-child{margin-top:0}
+.facts{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px 22px}
+.fact .v{font-family:var(--cond);font-weight:600;font-size:24px;line-height:1.1}
+.fact .k{font-size:13px;color:#5d6268}
+table.t{border-collapse:collapse;font-size:14px;min-width:360px}
+table.t th{text-align:left;font-weight:600;padding:5px 12px 5px 0;border-bottom:1px solid #cfcfc8;font-size:13px;color:#4f545a}
+table.t td{padding:5px 12px 5px 0;border-bottom:1px solid #e5e5e0}
+table.t td.n{font-family:var(--cond);font-size:17px;text-align:right}
+table.t tr.pick{cursor:pointer}
+table.t tr.pick:hover td{background:#e9eef6}
+table.t tr.cur td{background:#dfe9f7}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:8px 36px}
+.warn{background:#fbecd3;border-left:4px solid var(--warn);padding:8px 12px;margin:0 0 12px;font-size:14px}
+.err{background:#f8dcd6;border-left:4px solid var(--bad);padding:10px 14px;margin:0 0 12px;font-size:14.5px}
+.boardgrp{margin:0 0 14px}
+.boardhead{display:flex;gap:10px;align-items:baseline;margin-bottom:4px;font-size:14px}
+.boardhead .qty{font-family:var(--cond);font-weight:700;font-size:20px}
+.boardhead .wst{color:#6a6f75;margin-left:auto;font-size:13px}
+.board{display:flex;height:40px;border-radius:2px;overflow:hidden;background:repeating-linear-gradient(135deg,#d8d2c6 0 5px,#c6bfb2 5px 10px);box-shadow:inset 0 0 0 1px rgba(0,0,0,.18)}
+.piece{background:linear-gradient(180deg,#ecd2a0,var(--pine) 60%,#d6b47b);border-right:2px solid #5a4528;display:flex;flex-direction:column;justify-content:center;padding:0 6px;min-width:0;overflow:hidden}
+.piece .pl{font-family:var(--cond);font-weight:700;font-size:16px;line-height:1;white-space:nowrap}
+.piece .pn{font-size:11.5px;line-height:1.1;color:#5a4528;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.piece.post{background:linear-gradient(180deg,#d9b57b,#c99f61 60%,#b98d50)}
+.sheets{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px}
+.sheets svg{width:100%;height:auto;display:block}
+.sheetcap{font-size:13px;color:#5d6268;margin-top:4px}
+.note{font-size:13px;color:#5d6268;margin:6px 0 0}
+@media (max-width:900px){
+  .app{grid-template-columns:1fr;grid-template-rows:auto;height:auto}
+  .rail{max-height:none}
+  .main{grid-template-rows:62vh auto}
+  .results{min-height:60vh}
+  .hud .dims{font-size:30px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+<div class="app">
+  <aside class="rail" id="rail">
+    <div class="brand">
+      <h1>Shelf designer</h1>
+      <p>2x posts, ladder frames, plywood tops. Sized to the lumber you buy.</p>
+    </div>
+    <div id="controls"></div>
+    <div class="rail-foot">
+      <button class="btn primary" id="btnShare">Copy share link</button>
+      <button class="btn" id="btnCsv">Download cut list (CSV)</button>
+      <button class="btn" id="btnObj">Download 3D model (OBJ)</button>
+      <button class="btn" id="btnReset">Reset to defaults</button>
+    </div>
+  </aside>
+  <main class="main">
+    <section class="view" id="view">
+      <div class="hud"><div class="dims" id="hudDims"></div><div class="sub" id="hudSub"></div></div>
+      <div class="viewbtns">
+        <button class="btn" data-view="iso">3/4</button>
+        <button class="btn" data-view="front">Front</button>
+        <button class="btn" data-view="side">Side</button>
+        <button class="btn" data-view="top">Top</button>
+        <button class="btn" id="btnBins">Bins on</button>
+      </div>
+      <div class="status" id="status">Drag to rotate, scroll to zoom, right-drag to pan</div>
+    </section>
+    <section class="results">
+      <div class="tabs" role="tablist">
+        <button class="tab" role="tab" data-tab="summary" aria-selected="true">Summary</button>
+        <button class="tab" role="tab" data-tab="cuts" aria-selected="false">Cut list</button>
+        <button class="tab" role="tab" data-tab="ply" aria-selected="false">Plywood</button>
+        <button class="tab" role="tab" data-tab="opt" aria-selected="false">Options</button>
+      </div>
+      <div class="panel" id="panel"></div>
+    </section>
+  </main>
+</div>
+
+<script>
+window.Shelf=(()=>{
+const LUMBER={'2x4':{t:1.5,w:3.5},'2x6':{t:1.5,w:5.5},'2x8':{t:1.5,w:7.25},'2x10':{t:1.5,w:9.25},'2x12':{t:1.5,w:11.25}};
+const U=32,EPS=1e-6;
+const q=x=>Math.round(x*U);
+function fmtN(x){
+  if(!isFinite(x)) return '-';
+  const neg=x<0;x=Math.abs(x);
+  const n=Math.round(x*16);const w=Math.floor(n/16);let f=n%16,d=16;
+  while(f&&f%2===0){f/=2;d/=2;}
+  let s=w?String(w):'';
+  if(f) s+=(w?' ':'')+f+'/'+d;
+  if(!s) s='0';
+  return (neg?'-':'')+s;
+}
+const fmt=x=>fmtN(x)+'"';
+function parseLen(s){
+  s=String(s).trim().replace(/["\u201d]/g,'');
+  if(!s) return NaN;
+  const m=s.match(/^(\d+(?:\.\d+)?)?(?:[\s-]+)?(?:(\d+)\/(\d+))?$/);
+  if(!m||(!m[1]&&!m[2])) return NaN;
+  let v=m[1]?parseFloat(m[1]):0;
+  if(m[2]){const d=parseFloat(m[3]);if(!d) return NaN;v+=parseFloat(m[2])/d;}
+  return v;
+}
+function bestFill(types,rem,cap,k){
+  let best={u:0,c:null};let nodes=0;const n=types.length;const cur=new Array(n).fill(0);
+  (function dfs(i,left,u){
+    if(++nodes>60000) return;
+    if(u>best.u) best={u,c:cur.slice()};
+    if(i>=n||u+left<=best.u) return;
+    const sz=types[i].lu+k;const m=Math.min(rem[i],Math.floor(left/sz));
+    for(let c=m;c>=0;c--){cur[i]=c;dfs(i+1,left-c*sz,u+c*types[i].lu);if(nodes>60000) break;}
+    cur[i]=0;
+  })(0,cap,0);
+  return best;
+}
+function packBoards(pieces,lens,kerf,trim,weight){
+  const map=new Map();
+  for(const p of pieces){
+    if(!(p.qty>0)) continue;
+    const key=p.name+'|'+q(p.len);
+    if(map.has(key)) map.get(key).qty+=p.qty;
+    else map.set(key,{name:p.name,len:p.len,lu:q(p.len),qty:p.qty,mat:p.mat});
+  }
+  const types=[...map.values()].sort((a,b)=>b.lu-a.lu);
+  if(!types.length) return {ok:true,boards:[],bought:0,waste:0,cost:0,used:0};
+  if(!lens.length) return {ok:false,msg:'No stock lengths are turned on for this lumber size.'};
+  const maxFt=Math.max(...lens);
+  if(types[0].len>maxFt*12-trim+EPS) return {ok:false,msg:`${types[0].name} is ${fmt(types[0].len)} but the longest stock turned on is ${maxFt}'. Turn on a longer length.`};
+  let bestRes=null;
+  for(const crit of ['util','used']){
+    const rem=types.map(t=>t.qty);const boards=[];let guard=0;
+    while(rem.some(r=>r>0)&&guard++<1000){
+      let best=null;
+      for(const ft of lens){
+        const S=ft*12;const cap=q(S-trim)+q(kerf);
+        const r=bestFill(types,rem,cap,q(kerf));
+        if(!r.c||r.u<=0) continue;
+        const used=r.u/U;const w=weight(ft);
+        const score=crit==='util'?used/w:used*1e4-w;
+        if(!best||score>best.score+1e-12) best={ft,S,c:r.c,used,score};
+      }
+      if(!best) break;
+      let times=Infinity;
+      best.c.forEach((c,i)=>{if(c>0) times=Math.min(times,Math.floor(rem[i]/c));});
+      const cuts=[];
+      best.c.forEach((c,i)=>{for(let j=0;j<c;j++) cuts.push({name:types[i].name,len:types[i].len,mat:types[i].mat});});
+      for(let t=0;t<times;t++){
+        boards.push({ft:best.ft,S:best.S,cuts,used:best.used,waste:best.S-best.used});
+        best.c.forEach((c,i)=>rem[i]-=c);
+      }
+    }
+    if(rem.some(r=>r>0)) continue;
+    const res={ok:true,boards,bought:boards.reduce((a,b)=>a+b.S,0),waste:boards.reduce((a,b)=>a+b.waste,0),used:boards.reduce((a,b)=>a+b.used,0),cost:boards.reduce((a,b)=>a+weight(b.ft),0)};
+    if(!bestRes||res.cost<bestRes.cost-1e-9||(Math.abs(res.cost-bestRes.cost)<1e-9&&res.waste<bestRes.waste-1e-9)) bestRes=res;
+  }
+  return bestRes||{ok:false,msg:'Could not fit the pieces into the stock lengths.'};
+}
+function layout(p,L,D){
+  const fr=LUMBER[p.frame],po=LUMBER[p.post];
+  const ft=fr.t,fh=fr.w,pt=po.t;
+  if(L<=ft*2) return {ok:false,msg:'Shelf length is too short.'};
+  if(D<=ft*2+1) return {ok:false,msg:'Shelf depth is too shallow.'};
+  const C=Math.max(2,Math.ceil((L-ft)/Math.max(4,p.xMax)-1e-9)+1);
+  const step=(L-ft)/(C-1);const xs=[];
+  for(let i=0;i<C;i++) xs.push(i*step);
+  const segs=[];let start=0,guard=0;
+  while(L-start>p.sheetL+EPS&&guard++<50){
+    let c=null;
+    for(const a of xs){const cc=a+ft/2;if(cc>start+ft&&cc-start<=p.sheetL+EPS) c=cc;}
+    if(c===null) return {ok:false,msg:'The shelf is longer than a plywood sheet and no crossbar lands where a seam can go. Reduce the crossbar spacing.'};
+    segs.push({x0:start,len:c-start});start=c;
+  }
+  segs.push({x0:start,len:L-start});
+  return {ok:true,C,xs,segs,ft,fh,pt};
+}
+function planPly(p,N,D,segs){
+  const k=p.kerf,SW=p.sheetW,SL=p.sheetL,sh=p.plyShort,ms=p.minStrip;
+  if(!p.seams&&D-sh>SW+EPS) return {ok:false,msg:`Depth ${fmt(D)} is wider than a ${fmt(SW)} sheet. Allow seams or reduce the depth.`};
+  const items=[];
+  for(let s=0;s<N;s++) segs.forEach((g,j)=>items.push({shelf:s,seg:j,len:g.len}));
+  items.sort((a,b)=>b.len-a.len);
+  const lanesU=[];
+  for(const it of items){
+    const u=lanesU.find(l=>l.used+k+it.len<=SL+EPS);
+    if(u){it.xOff=u.used+k;u.used+=k+it.len;u.items.push(it);}
+    else{it.xOff=0;lanesU.push({used:it.len,items:[it]});}
+  }
+  const sheets=[];let cur;const strips={};
+  const newSheet=()=>{cur={lanes:[],fw:SW,off:0};sheets.push(cur);};
+  newSheet();
+  for(const u of lanesU){
+    let need=D,guard=0;
+    while(need>sh+EPS&&guard++<60){
+      let w=null;
+      if(need<=cur.fw+EPS) w=need;
+      else if(need-cur.fw<=sh+EPS&&cur.fw>ms-EPS) w=cur.fw;
+      else if(p.seams){const ww=Math.min(cur.fw,need-ms);if(ww>=ms-EPS) w=ww;}
+      if(w===null){
+        if(!cur.lanes.length) return {ok:false,msg:'A plywood strip does not fit on the sheet. Check sheet size and minimum strip width.'};
+        newSheet();continue;
+      }
+      const z0=D-need;
+      cur.lanes.push({off:cur.off,w,items:u.items.map(it=>({shelf:it.shelf,seg:it.seg,len:it.len,xOff:it.xOff}))});
+      for(const it of u.items){const key=it.shelf+'|'+it.seg;(strips[key]=strips[key]||[]).push({z0,w});}
+      cur.off+=w+k;cur.fw=Math.max(0,cur.fw-w-k);need-=w;
+    }
+  }
+  const area=sheets.length*SW*SL;
+  const used=N*D*segs.reduce((a,g)=>a+g.len,0);
+  return {ok:true,sheets,strips,count:sheets.length,area,used,waste:Math.max(0,area-used)};
+}
+function seamBlocks(N,D,lay,ply){
+  const out=[];const {xs,ft,segs}=lay;
+  for(let s=0;s<N;s++) segs.forEach((g,j)=>{
+    const st=ply.strips[s+'|'+j]||[];
+    for(let i=1;i<st.length;i++){
+      const zb=st[i].z0;
+      if(zb<ft*1.5||zb>D-ft*1.5) continue;
+      for(let c=0;c<xs.length-1;c++){
+        const a=xs[c]+ft,b=xs[c+1];
+        if(a>=g.x0-EPS&&b<=g.x0+g.len+EPS) out.push({shelf:s,x:a,len:b-a,z:zb-ft/2});
+      }
+    }
+  });
+  return out;
+}
+function frameSide(p,L,D,bm){
+  const lay=layout(p,L,D);if(!lay.ok) return lay;
+  const N=p.shelves;
+  const ply=planPly(p,N,D,lay.segs);if(!ply.ok) return ply;
+  const seams=seamBlocks(N,D,lay,ply);
+  const pieces=[{name:'Rail',len:L,qty:2*N,mat:'frame'},{name:'Crossbar',len:D-2*lay.ft,qty:lay.C*N,mat:'frame'}];
+  for(const b of seams) pieces.push({name:'Seam block',len:b.len,qty:1,mat:'frame'});
+  if(bm==='frame') pieces.push({name:'Base block',len:p.base,qty:4,mat:'frame'});
+  return {ok:true,lay,ply,seams,pieces};
+}
+function postSide(p,S,bm){
+  const fh=LUMBER[p.frame].w,t=p.plyT,N=p.shelves;
+  const raised=p.mode==='raised';
+  const sp=S-fh-t;
+  if(!(raised&&N===1)&&sp<=0) return {ok:false,msg:'Shelf spacing is smaller than the frame plus plywood.'};
+  const fb0=raised?p.base:sp;
+  const fb=[];for(let i=0;i<N;i++) fb.push(fb0+i*S);
+  const H=fb[N-1]+fh+t;
+  const pieces=[{name:'Post',len:H,qty:4,mat:'post'}];
+  const nsp=raised?N-1:N;
+  if(nsp>0) pieces.push({name:raised?'Spacer':'Spacer',len:sp,qty:4*nsp,mat:'post'});
+  if(bm==='post') pieces.push({name:'Base block',len:p.base,qty:4,mat:'post'});
+  return {ok:true,fb,H,sp,pieces};
+}
+function costMode(p){
+  if(p.objective!=='cost') return false;
+  for(const size of new Set([p.post,p.frame])){
+    const st=p.stock[size];
+    for(const ft of st.lens) if(!(st.price[ft]>0)) return false;
+  }
+  return p.plyPrice>0;
+}
+function weightFn(p,size,useCost){return useCost?(ft=>p.stock[size].price[ft]):(ft=>ft*12);}
+function ranges(p){
+  const N=p.shelves,fr=LUMBER[p.frame],po=LUMBER[p.post];
+  const fh=fr.w,t=p.plyT,raised=p.mode==='raised',B=raised?p.base:0;
+  let minClear=p.minBay;if(p.bins) minClear=Math.max(minClear,p.binH+p.binLift);
+  const Smin=minClear+fh+t;
+  const Smax=raised?(N>1?(p.ceiling-p.minTop-B-fh-t)/(N-1):Smin):(p.ceiling-p.minTop)/N;
+  const bal=raised?(N>0?(p.ceiling-B)/N:Smin):(p.ceiling+fh+t)/(N+1);
+  let Llow=p.Lmin,Dlow=p.Dmin;
+  if(p.bins){Dlow=Math.max(Dlow,p.binL-p.binOver);if(p.binsPerBay>0) Llow=Math.max(Llow,p.binsPerBay*p.binW+(p.binsPerBay-1)*p.binGap+2*po.t);}
+  return {Smin,Smax,bal,minClear,Llow,Dlow};
+}
+function optimize(p){
+  const N=p.shelves,fr=LUMBER[p.frame],po=LUMBER[p.post];
+  const t=p.plyT,raised=p.mode==='raised',B=raised?p.base:0;
+  const useCost=costMode(p);
+  const wPost=weightFn(p,p.post,useCost),wFr=weightFn(p,p.frame,useCost);
+  const R=ranges(p);
+  let Sset;
+  if(!p.pitchAuto) Sset=[p.pitch];
+  else if(raised&&N===1) Sset=[Math.ceil(R.Smin*8)/8];
+  else{
+    if(R.Smax<R.Smin-EPS) return {ok:false,msg:`A ${fmt(p.ceiling)} ceiling can't fit ${N} shelves with ${fmt(R.minClear)} clear bays and ${fmt(p.minTop)} above the top. Lower the shelf count or the minimum clearances.`};
+    const lo=Math.ceil(R.Smin*8-1e-6)/8,hi=Math.max(lo,Math.floor(R.Smax*8+1e-6)/8);
+    if(p.objective==='tall') Sset=[hi];
+    else if(p.objective==='balanced') Sset=[Math.min(hi,Math.max(lo,Math.floor(R.bal*8)/8))];
+    else{Sset=[];for(let s=lo;s<=hi+EPS;s+=0.125) Sset.push(+s.toFixed(4));}
+  }
+  const rng=(auto,v,lo,hi,base)=>{
+    if(!auto) return [v];
+    if(hi<lo-EPS) return null;
+    let step=base;while((hi-lo)/step>40) step*=2;
+    const a=[];for(let x=Math.ceil(lo/step-1e-9)*step;x<=hi+EPS;x+=step) a.push(+x.toFixed(4));
+    return a.length?a:[lo];
+  };
+  const Lset=rng(p.Lauto,p.L,R.Llow,p.Lmax,0.25),Dset=rng(p.Dauto,p.D,R.Dlow,p.Dmax,0.125);
+  if(!Lset||!Dset) return {ok:false,msg:'The auto length or depth range is empty for the bins you picked. Widen the min and max.'};
+  let bms=['none'];
+  if(raised&&B>0) bms=p.post===p.frame?['post']:(p.blocks==='auto'?['post','frame']:[p.blocks]);
+  const aPost=po.t*po.w,aFr=fr.t*fr.w;
+  const r3=x=>Math.round(x*1000)/1000;
+  let best=null,lastErr=null;const candS={},candLD={};
+  for(const bm of bms){
+    const sl=[];
+    for(const S of Sset){
+      const ps=postSide(p,S,bm);if(!ps.ok){lastErr=ps.msg;continue;}
+      const pk=packBoards(ps.pieces,p.stock[p.post].lens,p.kerf,p.trim,wPost);
+      if(!pk.ok){lastErr=pk.msg;continue;}
+      sl.push({S,sc:r3(useCost?pk.cost:pk.waste*aPost),ps,pk});
+    }
+    const fl=[];
+    for(const L of Lset) for(const D of Dset){
+      const fs=frameSide(p,L,D,bm);if(!fs.ok){lastErr=fs.msg;continue;}
+      const pk=packBoards(fs.pieces,p.stock[p.frame].lens,p.kerf,p.trim,wFr);
+      if(!pk.ok){lastErr=pk.msg;continue;}
+      const plySc=useCost?fs.ply.count*p.plyPrice:fs.ply.waste*t;
+      fl.push({L,D,sc:r3((useCost?pk.cost:pk.waste*aFr)+plySc),fs,pk});
+    }
+    if(!sl.length||!fl.length) continue;
+    sl.sort((a,b)=>a.sc-b.sc||b.S-a.S);
+    fl.sort((a,b)=>a.sc-b.sc||(b.L*b.D-a.L*a.D)||Math.abs(a.L-p.L)-Math.abs(b.L-p.L));
+    const tot=sl[0].sc+fl[0].sc;
+    candS[bm]=sl;candLD[bm]=fl;
+    if(!best||tot<best.tot-EPS) best={tot,bm,s:sl[0],f:fl[0]};
+  }
+  if(!best) return {ok:false,msg:lastErr||'No design fits these settings.'};
+  return {ok:true,S:best.s.S,L:best.f.L,D:best.f.D,bm:best.bm,useCost,candS:candS[best.bm],candLD:candLD[best.bm]};
+}
+function build(p,S,L,D,bm){
+  const ps=postSide(p,S,bm);if(!ps.ok) return ps;
+  const fs=frameSide(p,L,D,bm);if(!fs.ok) return fs;
+  const po=LUMBER[p.post],fr=LUMBER[p.frame];
+  const pt=po.t,pw=po.w,ft=fr.t,fh=fr.w,t=p.plyT,N=p.shelves;
+  const raised=p.mode==='raised';
+  const OL=L+2*pt,H=ps.H;
+  const parts=[];
+  const add=(kind,x,y,z,dx,dy,dz)=>parts.push({kind,x,y,z,dx,dy,dz});
+  for(const x of [0,OL-pt]) for(const z of [0,D-pw]) add('post',x,0,z,pt,H,pw);
+  if(raised&&p.base>0&&bm!=='none'){
+    const bw=bm==='frame'?fr.w:po.w,bt=bm==='frame'?ft:pt;
+    for(const x of [pt,OL-pt-bt]) for(const z of [0,D-bw]) add('block',x,0,z,bt,p.base,bw);
+  }
+  ps.fb.forEach((fb,i)=>{
+    if(raised&&i===0) return;
+    const y0=i===0?0:ps.fb[i-1]+fh+t;
+    for(const x of [pt,OL-2*pt]) for(const z of [0,D-pw]) add('spacer',x,y0,z,pt,fb-y0,pw);
+  });
+  ps.fb.forEach((fb,s)=>{
+    for(const z of [0,D-ft]) add('rail',pt,fb,z,L,fh,ft);
+    for(const a of fs.lay.xs) add('cross',pt+a,fb,ft,ft,fh,D-2*ft);
+    fs.seams.filter(b=>b.shelf===s).forEach(b=>add('seam',pt+b.x,fb,b.z,b.len,fh,ft));
+    fs.lay.segs.forEach((g,j)=>{(fs.ply.strips[s+'|'+j]||[]).forEach(st=>add('ply',pt+g.x0,fb+fh,st.z0,g.len,t,st.w));});
+  });
+  const surf=ps.fb.map(f=>f+fh+t);
+  const bays=[];
+  if(!raised) bays.push({y:0,top:ps.fb[0],name:'Floor',inner:true});
+  surf.forEach((y,i)=>bays.push({y,top:i<N-1?ps.fb[i+1]:p.ceiling,name:'Shelf '+(i+1),inner:i<N-1,isTop:i===N-1}));
+  const binParts=[];
+  bays.forEach(b=>{
+    b.clear=b.top-b.y;b.bins=0;
+    if(!p.bins) return;
+    if(b.clear<p.binH-EPS) return;
+    const width=b.inner?L-2*pt:L;
+    const n=Math.max(0,Math.floor((width+p.binGap+EPS)/(p.binW+p.binGap)));
+    b.bins=n;
+    const tw=n*p.binW+(n-1)*p.binGap;
+    const z0=Math.max(0,D-p.binL);
+    for(let i=0;i<n;i++){
+      const x=pt+(L-tw)/2+i*(p.binW+p.binGap);
+      const lid=Math.min(1.25,p.binH*0.12);
+      binParts.push({kind:'bin',x,y:b.y,z:z0,dx:p.binW,dy:p.binH-lid,dz:p.binL});
+      binParts.push({kind:'lid',x:x-0.15,y:b.y+p.binH-lid,z:z0-0.15,dx:p.binW+0.3,dy:lid,dz:p.binL+0.3});
+    }
+  });
+  const useCost=costMode(p);
+  const groups={};
+  const addP=(size,pcs)=>{(groups[size]=groups[size]||[]).push(...pcs);};
+  addP(p.post,ps.pieces);addP(p.frame,fs.pieces);
+  const packs={};
+  for(const size in groups){
+    const pk=packBoards(groups[size],p.stock[size].lens,p.kerf,p.trim,weightFn(p,size,useCost));
+    if(!pk.ok) return pk;
+    packs[size]=pk;
+  }
+  return {ok:true,S,L,D,bm,OL,H,parts,binParts,ps,fs,surf,bays,packs,raised,
+    bayClear:S-fh-t,topClear:p.ceiling-H,diag:Math.hypot(H,D),overhang:p.bins?Math.max(0,p.binL-D):0};
+}
+return {LUMBER,fmt,fmtN,parseLen,packBoards,planPly,layout,postSide,frameSide,optimize,build,ranges,costMode};
+})();
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {CSS2DRenderer,CSS2DObject} from 'three/addons/renderers/CSS2DRenderer.js';
+import {OBJExporter} from 'three/addons/exporters/OBJExporter.js';
+const SH=window.Shelf,{fmt,fmtN,parseLen,LUMBER}=SH;
+const DEF={
+  mode:'raised',shelves:4,base:3,
+  L:96,Lauto:false,Lmin:72,Lmax:120,
+  D:24,Dauto:false,Dmin:16,Dmax:32,
+  xMax:24,
+  ceiling:79,pitchAuto:true,pitch:18,minBay:12,minTop:12,objective:'waste',
+  post:'2x6',frame:'2x4',blocks:'auto',kerf:0.125,trim:0,
+  stock:{'2x4':{lens:[8],price:{}},'2x6':{lens:[8],price:{}},'2x8':{lens:[8],price:{}},'2x10':{lens:[8],price:{}},'2x12':{lens:[8],price:{}}},
+  plyT:0.625,sheetW:48,sheetL:96,seams:true,minStrip:8,plyShort:0.25,plyPrice:0,
+  bins:false,binPreset:'hdx27',binL:28.6,binW:19.6,binH:15.2,binLift:1.5,binGap:1,binOver:0,binsPerBay:0
+};
+const PRESETS={hdx27:{name:'HDX 27 gal Tough Tote',L:28.6,W:19.6,H:15.2},custom:{name:'Custom'}};
+const LENS=[6,8,10,12,14,16];
+const clone=o=>JSON.parse(JSON.stringify(o));
+function load(){
+  const p=clone(DEF);
+  const m=location.hash.match(/cfg=([^&]+)/);
+  if(m){try{const o=JSON.parse(decodeURIComponent(escape(atob(m[1]))));Object.assign(p,o);for(const k in DEF.stock) if(!p.stock[k]) p.stock[k]=clone(DEF.stock[k]);}catch(e){}}
+  return p;
+}
+let P=load();
+let showBins=true;
+const shareUrl=()=>location.href.split('#')[0]+'#cfg='+btoa(unescape(encodeURIComponent(JSON.stringify(P))));
+function save(){history.replaceState(null,'',shareUrl());}
+
+const SPEC=[
+  {sec:'Shelf',open:true},
+  {k:'mode',l:'Bottom shelf',t:'sel',o:[['raised','Raised on base blocks'],['floor','Floor is the bottom shelf']]},
+  {k:'shelves',l:'Shelf frames',t:'range',min:1,max:8,step:1,h:p=>p.mode==='floor'?'Plus the floor bay':''},
+  {k:'base',l:'Bottom frame height',t:'num',h:()=>'Base block under the first frame',if:p=>p.mode==='raised'},
+  {k:'L',l:'Shelf length',t:'auto',ak:'Lauto',lo:'Lmin',hi:'Lmax',h:()=>'Rail length between posts'},
+  {k:'D',l:'Shelf depth',t:'auto',ak:'Dauto',lo:'Dmin',hi:'Dmax'},
+  {k:'xMax',l:'Max crossbar spacing',t:'num',h:()=>'On center, sets crossbar count'},
+  {sec:'Height',open:true},
+  {k:'ceiling',l:'Ceiling height',t:'num'},
+  {k:'pitch',l:'Shelf spacing',t:'auto',ak:'pitchAuto',h:()=>'Surface to surface'},
+  {k:'minBay',l:'Min clear per bay',t:'num',if:p=>p.pitchAuto},
+  {k:'minTop',l:'Min clear above top',t:'num',if:p=>p.pitchAuto},
+  {k:'objective',l:'Optimize for',t:'sel',o:[['waste','Least waste'],['cost','Lowest cost'],['tall','Tallest bays'],['balanced','Even gaps up to ceiling']]},
+  {sec:'Lumber',open:true},
+  {k:'post',l:'Posts and spacers',t:'sel',o:Object.keys(LUMBER).map(k=>[k,k])},
+  {k:'frame',l:'Rails and crossbars',t:'sel',o:Object.keys(LUMBER).map(k=>[k,k])},
+  {t:'stock'},
+  {k:'blocks',l:'Base blocks from',t:'sel',o:[['auto','Whichever wastes less'],['post','Post stock'],['frame','Frame stock offcuts']],if:p=>p.mode==='raised'&&p.base>0&&p.post!==p.frame},
+  {k:'kerf',l:'Saw kerf',t:'num'},
+  {k:'trim',l:'End trim per board',t:'num',h:()=>'Squaring cut off each board'},
+  {sec:'Plywood',open:false},
+  {k:'plyT',l:'Thickness',t:'sel',num:true,o:[[0.46875,'15/32"'],[0.5,'1/2"'],[0.59375,'19/32"'],[0.625,'5/8"'],[0.71875,'23/32"'],[0.75,'3/4"']]},
+  {k:'sheetW',l:'Sheet width',t:'num'},
+  {k:'sheetL',l:'Sheet length',t:'num'},
+  {k:'seams',l:'Allow seams over blocking',t:'chk'},
+  {k:'minStrip',l:'Narrowest strip',t:'num',if:p=>p.seams},
+  {k:'plyShort',l:'Top may run short by',t:'num',h:()=>'Covers kerf on half-sheet rips'},
+  {k:'plyPrice',l:'Price per sheet',t:'money',if:p=>p.objective==='cost'},
+  {sec:'Bins',open:false},
+  {k:'bins',l:'Fit storage bins',t:'chk'},
+  {k:'binPreset',l:'Bin',t:'sel',o:Object.entries(PRESETS).map(([k,v])=>[k,v.name]),if:p=>p.bins},
+  {k:'binL',l:'Bin length (front to back)',t:'num',if:p=>p.bins},
+  {k:'binW',l:'Bin width',t:'num',if:p=>p.bins},
+  {k:'binH',l:'Bin height with lid',t:'num',if:p=>p.bins},
+  {k:'binLift',l:'Lift clearance',t:'num',h:()=>'Room to tilt a bin out',if:p=>p.bins},
+  {k:'binGap',l:'Gap between bins',t:'num',if:p=>p.bins},
+  {k:'binOver',l:'Allowed overhang',t:'num',if:p=>p.bins},
+  {k:'binsPerBay',l:'Bins per bay (0 = any)',t:'range',min:0,max:8,step:1,if:p=>p.bins}
+];
+const ctl=document.getElementById('controls');
+const rows=[];
+function numInput(key,obj=P){
+  const i=document.createElement('input');i.type='text';i.inputMode='decimal';i.value=fmtN(obj[key]);
+  i.addEventListener('input',()=>{const v=parseLen(i.value);if(isFinite(v)){i.classList.remove('bad');obj[key]=v;changed();}else i.classList.add('bad');});
+  i.addEventListener('blur',()=>{i.value=fmtN(obj[key]);i.classList.remove('bad');});
+  return i;
+}
+function renderControls(){
+  ctl.innerHTML='';rows.length=0;
+  let body=null;
+  for(const s of SPEC){
+    if(s.sec){
+      const d=document.createElement('details');d.className='sec';d.open=s.open;
+      d.innerHTML=`<summary>${s.sec}</summary>`;body=document.createElement('div');body.className='sec-body';d.appendChild(body);ctl.appendChild(d);continue;
+    }
+    let el;
+    if(s.t==='stock'){el=document.createElement('div');el.id='stockTable';body.appendChild(el);rows.push({s,el});continue;}
+    if(s.t==='auto'){
+      el=document.createElement('div');el.className='auto';
+      const line=document.createElement('div');line.className='line';
+      const lab=document.createElement('label');lab.innerHTML=s.l+(s.h?`<span class="hint">${s.h(P)}</span>`:'');
+      line.appendChild(lab);
+      const right=document.createElement('div');
+      if(P[s.ak]){right.className='autoval';right.dataset.autoFor=s.k;right.textContent='auto';}
+      else right.appendChild(numInput(s.k));
+      line.appendChild(right);el.appendChild(line);
+      const ch=document.createElement('label');ch.className='chk';
+      ch.innerHTML=`<input type="checkbox" ${P[s.ak]?'checked':''}> Pick automatically`;
+      ch.querySelector('input').addEventListener('change',e=>{P[s.ak]=e.target.checked;renderControls();changed();});
+      el.appendChild(ch);
+      if(P[s.ak]&&s.lo){
+        const mm=document.createElement('div');mm.className='minmax';
+        mm.append('Min',numInput(s.lo),'Max',numInput(s.hi));el.appendChild(mm);
+      }
+    }else if(s.t==='chk'){
+      el=document.createElement('label');el.className='chk';
+      el.innerHTML=`<input type="checkbox" ${P[s.k]?'checked':''}> ${s.l}`;
+      el.querySelector('input').addEventListener('change',e=>{P[s.k]=e.target.checked;refreshVis();changed();});
+    }else{
+      el=document.createElement('div');el.className='row';
+      const lab=document.createElement('label');lab.innerHTML=s.l+`<span class="hint"></span>`;el.appendChild(lab);
+      if(s.t==='sel'){
+        const sel=document.createElement('select');
+        for(const [v,t] of s.o){const o=document.createElement('option');o.value=v;o.textContent=t;if(String(P[s.k])===String(v)) o.selected=true;sel.appendChild(o);}
+        sel.addEventListener('change',()=>{P[s.k]=s.num?parseFloat(sel.value):sel.value;if(s.k==='binPreset') applyPreset();if(['post','frame','objective','mode'].includes(s.k)){renderControls();}else refreshVis();changed();});
+        el.appendChild(sel);
+      }else if(s.t==='range'){
+        const w=document.createElement('div');w.className='rangewrap';
+        const r=document.createElement('input');r.type='range';r.min=s.min;r.max=s.max;r.step=s.step;r.value=P[s.k];
+        const v=document.createElement('div');v.className='rangeval';v.textContent=P[s.k];
+        r.addEventListener('input',()=>{P[s.k]=+r.value;v.textContent=r.value;refreshVis();changed();});
+        w.append(r,v);el.appendChild(w);
+      }else if(s.t==='money'){
+        const i=document.createElement('input');i.type='text';i.inputMode='decimal';i.value=P[s.k]||'';i.placeholder='$';
+        i.addEventListener('input',()=>{P[s.k]=parseFloat(i.value)||0;changed();});el.appendChild(i);
+      }else el.appendChild(numInput(s.k));
+    }
+    body.appendChild(el);rows.push({s,el});
+  }
+  refreshVis();renderStock();
+}
+function applyPreset(){
+  const pr=PRESETS[P.binPreset];
+  if(pr&&pr.L){P.binL=pr.L;P.binW=pr.W;P.binH=pr.H;}
+  renderControls();
+}
+function refreshVis(){
+  for(const {s,el} of rows){
+    el.style.display=s.if&&!s.if(P)?'none':'';
+    if(s.h&&s.t!=='auto'){const h=el.querySelector('.hint');if(h) h.textContent=s.h(P);}
+  }
+}
+function renderStock(){
+  const el=document.getElementById('stockTable');if(!el) return;
+  const sizes=[...new Set([P.post,P.frame])];
+  const showPrice=P.objective==='cost';
+  let h='<table class="stock"><tr><th>Stock</th>'+sizes.map(s=>`<th>${s}</th>`).join('')+'</tr>';
+  for(const ft of LENS){
+    h+=`<tr><td class="len">${ft}'</td>`;
+    for(const s of sizes){
+      const st=P.stock[s];const on=st.lens.includes(ft);
+      h+=`<td><div class="cell"><input type="checkbox" data-s="${s}" data-ft="${ft}" ${on?'checked':''} aria-label="${s} ${ft} foot">`+
+        (showPrice&&on?`<input type="text" inputmode="decimal" placeholder="$" data-ps="${s}" data-pft="${ft}" value="${st.price[ft]||''}" aria-label="${s} ${ft} foot price">`:'')+`</div></td>`;
+    }
+    h+='</tr>';
+  }
+  h+='</table><p class="note" style="color:#a3a8ad;margin:4px 0 0">Turn on what the store stocks. The optimizer picks the mix.</p>';
+  el.innerHTML=h;
+  el.querySelectorAll('input[type=checkbox]').forEach(c=>c.addEventListener('change',()=>{
+    const st=P.stock[c.dataset.s];const ft=+c.dataset.ft;
+    st.lens=c.checked?[...new Set([...st.lens,ft])].sort((a,b)=>a-b):st.lens.filter(x=>x!==ft);
+    renderStock();changed();
+  }));
+  el.querySelectorAll('input[data-ps]').forEach(i=>i.addEventListener('input',()=>{P.stock[i.dataset.ps].price[+i.dataset.pft]=parseFloat(i.value)||0;changed();}));
+}
+
+const view=document.getElementById('view');
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(2,window.devicePixelRatio));
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+view.prepend(renderer.domElement);
+const labelR=new CSS2DRenderer();labelR.domElement.className='overlay';view.appendChild(labelR.domElement);
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0xdcddd8);
+scene.fog=new THREE.Fog(0xdcddd8,500,1400);
+const camera=new THREE.PerspectiveCamera(35,1,1,5000);
+const controls=new OrbitControls(camera,renderer.domElement);
+controls.enableDamping=true;controls.dampingFactor=0.12;controls.maxPolarAngle=Math.PI*0.495;
+scene.add(new THREE.HemisphereLight(0xffffff,0x8a8a80,1.1));
+const sun=new THREE.DirectionalLight(0xffffff,1.6);sun.position.set(-120,220,180);sun.castShadow=true;
+sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-160,right:160,top:160,bottom:-160,near:10,far:700});
+scene.add(sun);
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(1200,1200),new THREE.MeshStandardMaterial({color:0xc4c6c0,roughness:1}));
+floor.rotation.x=-Math.PI/2;floor.receiveShadow=true;scene.add(floor);
+const grid=new THREE.GridHelper(1200,100,0xaeb0aa,0xb7b9b3);grid.position.y=0.02;scene.add(grid);
+const COLORS={post:0xc99f61,spacer:0xb98a4f,block:0xa9783f,rail:0xe3c48f,cross:0xd9b67c,seam:0xcfa86c,ply:0xe2cfa3,bin:0x2a2c2f,lid:0xf2c200};
+const mats={};for(const k in COLORS) mats[k]=new THREE.MeshStandardMaterial({color:COLORS[k],roughness:k==='bin'?0.6:0.85,transparent:k==='ply',opacity:k==='ply'?0.92:1});
+const edgeMat=new THREE.LineBasicMaterial({color:0x3d2e1c,transparent:true,opacity:0.55});
+const ceilMat=new THREE.MeshBasicMaterial({color:0xa33a2a,transparent:true,opacity:0.07,side:THREE.DoubleSide,depthWrite:false});
+const ceilLine=new THREE.LineBasicMaterial({color:0xa33a2a});
+let group=null,binGroup=null,lastKey='';
+function clearGroup(g){if(!g) return;scene.remove(g);g.traverse(o=>{if(o.geometry) o.geometry.dispose();if(o.element) o.element.remove();});}
+function mkBox(pt,ox,oz){
+  const geo=new THREE.BoxGeometry(pt.dx,pt.dy,pt.dz);
+  const m=new THREE.Mesh(geo,mats[pt.kind]);
+  m.position.set(pt.x+pt.dx/2-ox,pt.y+pt.dy/2,pt.z+pt.dz/2-oz);
+  m.castShadow=pt.kind!=='ply';m.receiveShadow=true;m.name=pt.kind;
+  if(pt.kind!=='bin'&&pt.kind!=='lid'){const e=new THREE.LineSegments(new THREE.EdgesGeometry(geo),edgeMat);m.add(e);}
+  return m;
+}
+function label(text,x,y,z,cls='lbl'){const d=document.createElement('div');d.className=cls;d.textContent=text;const o=new CSS2DObject(d);o.position.set(x,y,z);return o;}
+function draw(d){
+  clearGroup(group);clearGroup(binGroup);
+  group=new THREE.Group();binGroup=new THREE.Group();
+  const ox=d.OL/2,oz=d.D/2;
+  for(const pt of d.parts) group.add(mkBox(pt,ox,oz));
+  for(const pt of d.binParts) binGroup.add(mkBox(pt,ox,oz));
+  binGroup.visible=showBins;
+  const c=P.ceiling;
+  const plane=new THREE.Mesh(new THREE.PlaneGeometry(d.OL+24,d.D+24),ceilMat);plane.rotation.x=-Math.PI/2;plane.position.y=c;group.add(plane);
+  const hw=(d.OL+24)/2,hd=(d.D+24)/2;
+  const lg=new THREE.BufferGeometry().setFromPoints([[-hw,-hd],[hw,-hd],[hw,hd],[-hw,hd],[-hw,-hd]].map(([x,z])=>new THREE.Vector3(x,c,z)));
+  group.add(new THREE.Line(lg,ceilLine));
+  group.add(label(`Ceiling ${fmt(c)}`,hw,c+2,hd,'lbl ceil'));
+  d.surf.forEach(y=>group.add(label(fmt(y),-ox-4,y,oz)));
+  scene.add(group);scene.add(binGroup);
+  const key=[d.OL,d.D,d.H].map(v=>Math.round(v)).join('|');
+  if(key!==lastKey){lastKey=key;setView(currentView,true);}
+}
+let currentView='iso';
+function setView(v,keepIfUser){
+  currentView=v;
+  const H=Math.max(lastDesign?lastDesign.H:60,P.ceiling*0.85),W=lastDesign?lastDesign.OL:99,Dp=lastDesign?lastDesign.D:24;
+  const target=new THREE.Vector3(0,H*0.45,0);
+  const r=Math.max(W,H,Dp)*0.74/Math.tan(THREE.MathUtils.degToRad(camera.fov/2));
+  const dirs={iso:[-0.62,0.42,0.9],front:[0,0.12,1],side:[1,0.12,0.02],top:[0,1,0.02]};
+  const dv=new THREE.Vector3(...dirs[v]).normalize().multiplyScalar(r);
+  camera.position.copy(target).add(dv);controls.target.copy(target);controls.update();
+}
+function resize(){
+  const w=view.clientWidth,h=view.clientHeight;
+  renderer.setSize(w,h);labelR.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(view);
+(function loop(){requestAnimationFrame(loop);controls.update();renderer.render(scene,camera);labelR.render(scene,camera);})();
+document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>setView(b.dataset.view)));
+const btnBins=document.getElementById('btnBins');
+btnBins.addEventListener('click',()=>{showBins=!showBins;btnBins.textContent=showBins?'Bins on':'Bins off';if(binGroup) binGroup.visible=showBins;});
+
+let lastDesign=null,lastOpt=null,lastErr=null,tab='summary';
+let timer=null;
+const statusEl=document.getElementById('status');
+function changed(){
+  save();
+  clearTimeout(timer);
+  const heavy=P.Lauto||P.Dauto;
+  if(heavy) statusEl.textContent='Optimizing';
+  timer=setTimeout(compute,heavy?180:40);
+}
+function compute(){
+  const t0=performance.now();
+  const opt=SH.optimize(P);
+  lastOpt=opt;
+  if(!opt.ok){lastErr=opt.msg;renderPanel();statusEl.textContent='No design fits these settings';return;}
+  const d=SH.build(P,opt.S,opt.L,opt.D,opt.bm);
+  if(!d.ok){lastErr=d.msg;renderPanel();return;}
+  lastErr=null;lastDesign=d;
+  document.querySelectorAll('[data-auto-for]').forEach(el=>{const k=el.dataset.autoFor;el.textContent=fmt(k==='pitch'?d.S:d[k]);});
+  draw(d);renderHud(d);renderPanel();
+  statusEl.textContent=`Optimized in ${Math.round(performance.now()-t0)} ms. Drag to rotate, scroll to zoom.`;
+}
+function renderHud(d){
+  document.getElementById('hudDims').textContent=`${fmtN(d.OL)} × ${fmtN(d.D)} × ${fmtN(d.H)}"`;
+  const n=d.surf.length+(d.raised?0:1);
+  document.getElementById('hudSub').textContent=`${n} shelf surfaces${d.raised?'':' including the floor'}, ${fmt(d.bayClear)} clear between them, ${fmt(d.topClear)} to the ceiling`;
+}
+function boardTotals(d){
+  const out=[];
+  for(const size in d.packs){
+    const pk=d.packs[size];const by={};
+    pk.boards.forEach(b=>{by[b.ft]=(by[b.ft]||0)+1;});
+    out.push({size,pk,by});
+  }
+  return out;
+}
+const money=x=>'$'+x.toFixed(2);
+function summaryHTML(d){
+  const tot=boardTotals(d);
+  const useCost=SH.costMode(P);
+  let h='';
+  if(P.objective==='cost'&&!useCost) h+=`<div class="warn">Enter a price for every stock length that is turned on, plus the plywood sheet price, to optimize for cost. Showing least waste until then.</div>`;
+  if(d.diag>P.ceiling) h+=`<div class="warn">This unit is ${fmt(d.diag)} on the diagonal, so it won't tilt up under a ${fmt(P.ceiling)} ceiling. Assemble it standing, or tilt it up before adding the top frame.</div>`;
+  if(d.overhang>0) h+=`<div class="warn">Bins overhang the front by ${fmt(d.overhang)}.</div>`;
+  if(P.bins&&d.bayClear<P.binH+P.binLift-1e-6) h+=`<div class="warn">Bays are ${fmt(d.bayClear)} clear, which is less than the bin plus lift clearance (${fmt(P.binH+P.binLift)}).</div>`;
+  const surfaces=(d.raised?[]:['0" (floor)']).concat(d.surf.map(fmt));
+  h+=`<div class="facts">
+    <div class="fact"><div class="v">${surfaces.join(', ')}</div><div class="k">Shelf surface heights</div></div>
+    <div class="fact"><div class="v">${fmt(d.S)}</div><div class="k">Spacing, surface to surface</div></div>
+    <div class="fact"><div class="v">${fmt(d.bayClear)}</div><div class="k">Clear height in each bay</div></div>
+    <div class="fact"><div class="v">${fmt(d.topClear)}</div><div class="k">Clear above the top shelf</div></div>
+    <div class="fact"><div class="v">${d.fs.lay.C} per shelf</div><div class="k">Crossbars, ${fmt((d.L-d.fs.lay.ft)/(d.fs.lay.C-1))} on center</div></div>
+    ${P.bins?`<div class="fact"><div class="v">${d.bays.reduce((a,b)=>a+b.bins,0)} bins</div><div class="k">${d.bays.filter(b=>b.bins).map(b=>`${b.name}: ${b.bins}`).join(', ')||'None fit'}</div></div>`:''}
+  </div>`;
+  let buy='<table class="t"><tr><th>Buy</th><th>Length</th><th style="text-align:right">Qty</th>'+(useCost?'<th style="text-align:right">Cost</th>':'')+'</tr>';
+  let grand=0;
+  for(const g of tot) for(const ft of Object.keys(g.by).sort((a,b)=>a-b)){
+    const c=useCost?P.stock[g.size].price[ft]*g.by[ft]:0;grand+=c;
+    buy+=`<tr><td>${g.size}</td><td>${ft}'</td><td class="n">${g.by[ft]}</td>${useCost?`<td class="n">${money(c)}</td>`:''}</tr>`;
+  }
+  const ply=d.fs.ply;const pc=useCost?ply.count*P.plyPrice:0;grand+=pc;
+  buy+=`<tr><td>Plywood ${fmtN(P.plyT)}"</td><td>${fmtN(P.sheetW)}×${fmtN(P.sheetL)}</td><td class="n">${ply.count}</td>${useCost?`<td class="n">${money(pc)}</td>`:''}</tr>`;
+  if(useCost) buy+=`<tr><td colspan="3"><b>Total</b></td><td class="n"><b>${money(grand)}</b></td></tr>`;
+  buy+='</table>';
+  let w='<table class="t"><tr><th>Material</th><th style="text-align:right">Bought</th><th style="text-align:right">Waste</th><th style="text-align:right">%</th></tr>';
+  let vb=0,vw=0;
+  for(const g of tot){
+    const a=LUMBER[g.size].t*LUMBER[g.size].w;vb+=g.pk.bought*a;vw+=g.pk.waste*a;
+    w+=`<tr><td>${g.size}</td><td class="n">${fmtN(g.pk.bought)}"</td><td class="n">${fmtN(g.pk.waste)}"</td><td class="n">${(100*g.pk.waste/(g.pk.bought||1)).toFixed(1)}</td></tr>`;
+  }
+  vb+=ply.area*P.plyT;vw+=ply.waste*P.plyT;
+  w+=`<tr><td>Plywood</td><td class="n">${(ply.area/144).toFixed(1)} ft²</td><td class="n">${(ply.waste/144).toFixed(1)} ft²</td><td class="n">${(100*ply.waste/(ply.area||1)).toFixed(1)}</td></tr>`;
+  w+=`<tr><td><b>All material</b></td><td></td><td></td><td class="n"><b>${(100*vw/(vb||1)).toFixed(1)}</b></td></tr></table>`;
+  h+=`<div class="cols"><div><h3>Shopping list</h3>${buy}</div><div><h3>Waste</h3>${w}<p class="note">Waste includes kerf and end trim. Percent for all material is by volume.</p></div></div>`;
+  return h;
+}
+function cutsHTML(d){
+  let h='';
+  for(const size in d.packs){
+    const pk=d.packs[size];
+    h+=`<h3>${size}</h3>`;
+    const groups=new Map();
+    pk.boards.forEach(b=>{const k=b.ft+'|'+b.cuts.map(c=>c.name+c.len).join(',');if(!groups.has(k)) groups.set(k,{b,n:0});groups.get(k).n++;});
+    for(const {b,n} of groups.values()){
+      h+=`<div class="boardgrp"><div class="boardhead"><span class="qty">×${n}</span><span>${b.ft}' ${size}</span><span class="wst">${fmt(b.waste)} left over each</span></div><div class="board">`;
+      b.cuts.forEach(c=>{h+=`<div class="piece ${c.mat==='post'?'post':''}" style="flex:0 0 ${(100*c.len/b.S).toFixed(3)}%" title="${c.name} ${fmt(c.len)}"><span class="pl">${fmt(c.len)}</span><span class="pn">${c.name}</span></div>`;});
+      h+='</div></div>';
+    }
+  }
+  const counts={};
+  for(const size in d.packs) d.packs[size].boards.forEach(b=>b.cuts.forEach(c=>{const k=size+'|'+c.name+'|'+fmt(c.len);counts[k]=(counts[k]||0)+1;}));
+  h+='<h3>Pieces</h3><table class="t"><tr><th>Lumber</th><th>Piece</th><th style="text-align:right">Length</th><th style="text-align:right">Qty</th></tr>';
+  Object.entries(counts).forEach(([k,n])=>{const [s,nm,l]=k.split('|');h+=`<tr><td>${s}</td><td>${nm}</td><td class="n">${l}</td><td class="n">${n}</td></tr>`;});
+  h+='</table>';
+  return h;
+}
+function plyHTML(d){
+  const ply=d.fs.ply,SW=P.sheetW,SL=P.sheetL;
+  let h=`<p class="note" style="margin-top:0">${ply.count} sheet${ply.count>1?'s':''} of ${fmtN(P.plyT)}" plywood. Rip along the long edge. ${d.fs.seams.length?`Seams land over ${d.fs.seams.length} blocking pieces in the frames.`:'No seams.'}</p><div class="sheets">`;
+  ply.sheets.forEach((s,i)=>{
+    let svg=`<svg viewBox="-1 -1 ${SL+2} ${SW+2}" role="img" aria-label="Sheet ${i+1} layout"><defs><pattern id="hx${i}" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="4" height="4" fill="#d8d2c6"/><line x1="0" y1="0" x2="0" y2="4" stroke="#bfb8aa" stroke-width="2"/></pattern></defs>`;
+    svg+=`<rect x="0" y="0" width="${SL}" height="${SW}" fill="url(#hx${i})" stroke="#6b6458" stroke-width="0.4"/>`;
+    s.lanes.forEach(l=>l.items.forEach(it=>{
+      svg+=`<rect x="${it.xOff}" y="${l.off}" width="${it.len}" height="${l.w}" fill="#e2cfa3" stroke="#6b5434" stroke-width="0.4"/>`;
+      const fs=Math.min(5,l.w*0.32);
+      svg+=`<text x="${it.xOff+it.len/2}" y="${l.off+l.w/2+fs*0.35}" font-size="${fs}" text-anchor="middle" font-family="Barlow Condensed, sans-serif" font-weight="600" fill="#3a2c18">Shelf ${it.shelf+1}: ${fmtN(it.len)} × ${fmtN(l.w)}</text>`;
+    }));
+    svg+='</svg>';
+    h+=`<div>${svg}<div class="sheetcap">Sheet ${i+1}</div></div>`;
+  });
+  return h+'</div>';
+}
+function optHTML(d){
+  const o=lastOpt;
+  let h='<p class="note" style="margin-top:0">Click a row to lock that value in. Turn "Pick automatically" back on to let the optimizer choose again.</p><div class="cols">';
+  const fh=LUMBER[P.frame].w;
+  if(o.candS){
+    h+='<div><h3>Shelf spacing</h3><table class="t"><tr><th style="text-align:right">Spacing</th><th style="text-align:right">Bay clear</th><th style="text-align:right">Above top</th><th style="text-align:right">'+P.post+' boards</th><th style="text-align:right">Waste</th></tr>';
+    o.candS.slice(0,10).forEach(c=>{h+=`<tr class="pick ${c.S===d.S?'cur':''}" data-pick="pitch" data-v="${c.S}"><td class="n">${fmt(c.S)}</td><td class="n">${fmt(c.S-fh-P.plyT)}</td><td class="n">${fmt(P.ceiling-c.ps.H)}</td><td class="n">${c.pk.boards.length}</td><td class="n">${fmt(c.pk.waste)}</td></tr>`;});
+    h+='</table></div>';
+  }
+  if(o.candLD){
+    h+='<div><h3>Length and depth</h3><table class="t"><tr><th style="text-align:right">Length</th><th style="text-align:right">Depth</th><th style="text-align:right">'+P.frame+' boards</th><th style="text-align:right">Sheets</th><th style="text-align:right">Ply waste</th></tr>';
+    o.candLD.slice(0,10).forEach(c=>{h+=`<tr class="pick ${c.L===d.L&&c.D===d.D?'cur':''}" data-pick="ld" data-l="${c.L}" data-d="${c.D}"><td class="n">${fmt(c.L)}</td><td class="n">${fmt(c.D)}</td><td class="n">${c.pk.boards.length}</td><td class="n">${c.fs.ply.count}</td><td class="n">${(c.fs.ply.waste/144).toFixed(1)} ft²</td></tr>`;});
+    h+='</table></div>';
+  }
+  return h+'</div>';
+}
+const panel=document.getElementById('panel');
+function renderPanel(){
+  if(lastErr){panel.innerHTML=`<div class="err">${lastErr}</div>`;return;}
+  if(!lastDesign) return;
+  panel.innerHTML=tab==='summary'?summaryHTML(lastDesign):tab==='cuts'?cutsHTML(lastDesign):tab==='ply'?plyHTML(lastDesign):optHTML(lastDesign);
+  panel.querySelectorAll('tr.pick').forEach(tr=>tr.addEventListener('click',()=>{
+    if(tr.dataset.pick==='pitch'){P.pitchAuto=false;P.pitch=+tr.dataset.v;}
+    else{P.Lauto=false;P.Dauto=false;P.L=+tr.dataset.l;P.D=+tr.dataset.d;}
+    renderControls();changed();
+  }));
+}
+document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>{
+  tab=b.dataset.tab;document.querySelectorAll('.tab').forEach(x=>x.setAttribute('aria-selected',x===b?'true':'false'));renderPanel();
+}));
+function download(name,blob){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);}
+document.getElementById('btnCsv').addEventListener('click',()=>{
+  if(!lastDesign) return;
+  const d=lastDesign;const lines=[['Material','Stock length (ft)','Board','Piece','Length (in)','Length','Leftover (in)']];
+  for(const size in d.packs) d.packs[size].boards.forEach((b,i)=>b.cuts.forEach(c=>lines.push([size,b.ft,i+1,c.name,c.len.toFixed(4),fmt(c.len),b.waste.toFixed(4)])));
+  d.fs.ply.sheets.forEach((s,i)=>s.lanes.forEach(l=>l.items.forEach(it=>lines.push(['Plywood '+fmtN(P.plyT)+'"',fmtN(P.sheetW)+'x'+fmtN(P.sheetL),'Sheet '+(i+1),'Shelf '+(it.shelf+1)+' top',it.len.toFixed(4)+' x '+l.w.toFixed(4),fmt(it.len)+' x '+fmt(l.w),'']))));
+  const csv=lines.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  download('shelf-cut-list.csv',new Blob([csv],{type:'text/csv'}));
+});
+document.getElementById('btnObj').addEventListener('click',()=>{
+  if(!group) return;
+  const g=new THREE.Group();
+  group.children.filter(o=>o.isMesh&&o.name).forEach(m=>{const c=new THREE.Mesh(m.geometry,m.material);c.position.copy(m.position);c.name=m.name;g.add(c);});
+  if(showBins&&binGroup) binGroup.children.forEach(m=>{const c=new THREE.Mesh(m.geometry,m.material);c.position.copy(m.position);c.name=m.name;g.add(c);});
+  download('shelf.obj',new Blob([new OBJExporter().parse(g)],{type:'text/plain'}));
+});
+document.getElementById('btnShare').addEventListener('click',async e=>{
+  save();
+  try{await navigator.clipboard.writeText(shareUrl());e.target.textContent='Link copied';}catch(_){e.target.textContent='Copy the address bar';}
+  setTimeout(()=>e.target.textContent='Copy share link',1800);
+});
+document.getElementById('btnReset').addEventListener('click',()=>{P=clone(DEF);renderControls();changed();});
+renderControls();
+compute();
+</script>
+</body>
+</html>
